@@ -300,7 +300,7 @@ sub _load_if_exists {
     my $installed = installed_langs;
     my $number    = keys %$installed;
 
-    print _('I know [quant,_1,langauge,languages]', $number);
+    print _('I know [quant,_1,language,languages]', $number);
     # I know 5 languages
 
     print set_language('fr','de_DE','en');
