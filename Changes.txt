@@ -1,2 +1,6 @@
+0.02    2012-07-26
+        Added a check on initialization for 'appdir' to avoid generating errors
+        in Eclipse.
+
 0.01    2012-07-25
         First release
