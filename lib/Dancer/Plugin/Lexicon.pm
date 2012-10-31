@@ -23,50 +23,64 @@ my %Exports = (
 );
 
 for my $k ( keys %Exports ) {
-    &register( $k => $Exports{$k} );
+    register( $k => $Exports{$k} );
 }
 
 _setup_i18n();
-register_plugin for_versions => [1, 2];
 
 #===================================
+no warnings 'redefine';
 sub import {
 #===================================
     _setup_i18n();
-    __PACKAGE__->export_to_level( 1, @_ );
+#    __PACKAGE__->export_to_level( 1, @_ );
 }
 
-#===================================
-hook before => sub {
-#===================================
-    my $settings = _setup_i18n();
-    my $session_name = $settings->{session_name} || 'lang';
+register install_hooks => sub {
+    my $dsl = shift;
 
-    my $lang = param( $settings->{param_name} || "lang" )
-        || eval { session $session_name};
+    $dsl->hook(
+        before => sub {
+            my $settings = _setup_i18n();
+            my $session_name = $settings->{session_name} || 'lang';
 
-    my @langs;
-    if ($lang) {
-        @langs = $lang;
-    }
-    elsif ( $settings->{auto_detect} ) {
-        @langs = I18N::LangTags::Detect::http_accept_langs(
-            request->accept_language );
-        @langs = implicate_supers(@langs);
-        push @langs, panic_languages(@langs);
-    }
+            my $lang = param( $settings->{param_name} || "lang" )
+              || eval { session $session_name};
 
-    $lang = _set_language(@langs)->language_tag;
+            my @langs;
+            if ($lang) {
+                @langs = $lang;
+            }
+            elsif ( $settings->{auto_detect} ) {
+                @langs = I18N::LangTags::Detect::http_accept_langs(
+                    request->accept_language );
+                @langs = implicate_supers(@langs);
+                push @langs, panic_languages(@langs);
+            }
 
-    eval { session $session_name => $lang };
-};
+            $lang = _set_language(@langs)->language_tag;
 
-#===================================
-hook before_template => sub {
-#===================================
-    my $tokens  = shift;
-    my $exports = plugin_setting->{exports};
-    $tokens->{$_} = $exports->{$_} for keys %$exports;
+            eval { session $session_name => $lang };
+        }
+    );
+
+    $dsl->hook(
+        before_template_render => sub {
+            my $tokens  = shift;
+
+            # get the name of the localize methods in settings
+            my $funcs = plugin_setting->{'func'} || ['loc'];
+            $funcs = [$funcs] unless ref $funcs eq 'ARRAY';
+
+            # add them in the tokens
+            $tokens->{$_} = sub { 
+                warn "translating in template : @_";
+                _get_handle()->maketext(@_); 
+            } for @{ $funcs };
+
+            return $tokens;
+        }
+    );
 };
 
 #===================================
@@ -76,6 +90,7 @@ sub _installed_langs  { _setup_i18n()->{langs} }
 sub _current_language { _installed_langs()->{ _language_tag() } }
 sub _localize         { 
     my ($dsl, @args) = plugin_args(@_); 
+    warn "need to localize : @args";
     _get_handle->maketext(@args) 
 }
 #===================================
@@ -83,6 +98,7 @@ sub _localize         {
 #===================================
 sub _localize_ {
 #===================================
+    warn "****** _localize_ got: @_";
     return \*_ unless @_;
     _localize(@_);
 }
@@ -164,6 +180,7 @@ sub _setup_funcs {
     $funcs = [$funcs] unless ref $funcs eq 'ARRAY';
     my %localizers
         = map { $_ => $_ eq '_' ? \&_localize_ : \&_localize } @$funcs;
+
     &register( $_, $localizers{$_} ) for keys %localizers;
     $settings->{exports} = { %Exports, %localizers };
 
@@ -258,7 +275,10 @@ sub _load_if_exists {
     die "Unable to load $class : $@";
 }
 
+register_plugin for_versions => [1, 2];
+
 1;
+__END__
 
 # ABSTRACT: Flexible I18N using Locale::Maketext::Lexicon for Dancer apps
 
