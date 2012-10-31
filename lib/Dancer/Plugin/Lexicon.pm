@@ -4,8 +4,8 @@ use strict;
 use warnings;
 
 use Package::Stash();
-use Dancer::Plugin;
 use Dancer ':syntax';
+use Dancer::Plugin;
 use File::Spec::Functions qw(rel2abs);
 
 use I18N::LangTags qw(implicate_supers panic_languages);
@@ -27,7 +27,7 @@ for my $k ( keys %Exports ) {
 }
 
 _setup_i18n();
-register_plugin;
+register_plugin for_versions => [1, 2];
 
 #===================================
 sub import {
@@ -37,7 +37,7 @@ sub import {
 }
 
 #===================================
-add_hook before => sub {
+hook before => sub {
 #===================================
     my $settings = _setup_i18n();
     my $session_name = $settings->{session_name} || 'lang';
@@ -62,7 +62,7 @@ add_hook before => sub {
 };
 
 #===================================
-add_hook before_template => sub {
+hook before_template => sub {
 #===================================
     my $tokens  = shift;
     my $exports = plugin_setting->{exports};
@@ -70,11 +70,14 @@ add_hook before_template => sub {
 };
 
 #===================================
-sub _get_handle { var $Handle or _set_language() }
+sub _get_handle       { var $Handle or _set_language() }
 sub _language_tag     { _get_handle->language_tag }
 sub _installed_langs  { _setup_i18n()->{langs} }
 sub _current_language { _installed_langs()->{ _language_tag() } }
-sub _localize         { _get_handle->maketext(@_) }
+sub _localize         { 
+    my ($dsl, @args) = plugin_args(@_); 
+    _get_handle->maketext(@args) 
+}
 #===================================
 
 #===================================
@@ -96,7 +99,8 @@ sub _set_language {
 #===================================
 sub _external_set_language {
 #===================================
-    _set_language(@_);
+    my ($dsl, @args) = plugin_args(@_);
+    _set_language(@args);
     _current_language;
 }
 
@@ -172,9 +176,9 @@ sub _load_base_class {
     die "Missing (namespace) param in I18N config"
         unless $base_class;
 
-    for ( 'Locale::Maketext', 'Locale::Maketext::Lexicon' ) {
-        Dancer::ModuleLoader->require($_)
-            or die "$_ is not installed";
+    for my $package ( 'Locale::Maketext', 'Locale::Maketext::Lexicon' ) {
+        eval "use $package";
+        die "$package is not installed : $@" if $@;
     }
     _load_if_exists($base_class);
 
@@ -247,9 +251,11 @@ LOADER
 sub _load_if_exists {
 #===================================
     my $class = shift;
-    my ( $res, $err ) = Dancer::ModuleLoader->require($class);
-    die $err unless $res or $err =~ /Can't locate/;
-    return $res;
+    eval "use $class";
+    return 0 if $@ && $@ =~ /Can't locate/;
+    return 1 if !$@;
+
+    die "Unable to load $class : $@";
 }
 
 1;
