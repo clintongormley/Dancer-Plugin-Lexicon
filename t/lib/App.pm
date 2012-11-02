@@ -16,9 +16,6 @@ BEGIN {
 
 use Dancer::Plugin::Lexicon;
 
-my $views = path(dirname(__FILE__), '..', 'views');
-set views => $views;
-
 get '/in_route' => sub {
     l('hello'); 
 };

@@ -6,6 +6,10 @@ use Dancer;
 set show_errors => 1;
 set template => 'template_toolkit';
 
+use File::Spec;
+my $views = File::Spec->rel2abs(path(dirname(__FILE__), 'views'));
+set views => $views;
+
 use Dancer::Test;
 use t::lib::App;
 
