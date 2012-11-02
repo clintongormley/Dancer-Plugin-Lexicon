@@ -23,7 +23,7 @@ my %Exports = (
 );
 
 for my $k ( keys %Exports ) {
-    register( $k => $Exports{$k} );
+    register( $k => sub { $Exports{$k}->(@_) } );
 }
 
 _setup_i18n();
@@ -33,7 +33,7 @@ no warnings 'redefine';
 sub import {
 #===================================
     _setup_i18n();
-#    __PACKAGE__->export_to_level( 1, @_ );
+    __PACKAGE__->export_to_level( 1, @_ );
 }
 
 register install_hooks => sub {
@@ -74,7 +74,6 @@ register install_hooks => sub {
 
             # add them in the tokens
             $tokens->{$_} = sub { 
-                warn "translating in template : @_";
                 _get_handle()->maketext(@_); 
             } for @{ $funcs };
 
@@ -90,7 +89,6 @@ sub _installed_langs  { _setup_i18n()->{langs} }
 sub _current_language { _installed_langs()->{ _language_tag() } }
 sub _localize         { 
     my ($dsl, @args) = plugin_args(@_); 
-    warn "need to localize : @args";
     _get_handle->maketext(@args) 
 }
 #===================================
@@ -98,7 +96,6 @@ sub _localize         {
 #===================================
 sub _localize_ {
 #===================================
-    warn "****** _localize_ got: @_";
     return \*_ unless @_;
     _localize(@_);
 }
@@ -190,7 +187,7 @@ sub _setup_funcs {
 sub _load_base_class {
 #===================================
     my ( $base_class, $default ) = @_;
-    die "Missing (namespace) param in I18N config"
+    die "Missing (namespace) param in I18N config" 
         unless $base_class;
 
     for my $package ( 'Locale::Maketext', 'Locale::Maketext::Lexicon' ) {
