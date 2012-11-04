@@ -459,6 +459,16 @@ user's preferred language from their browser headers, then set:
 
     auto_detect: 0
 
+=head2 DANCER 2 COMPATIBILITY
+
+This plugin works fine under Dancer 2 as long as you use the following keyword:
+
+    dp_lexicon_install_hooks();
+
+This will install the hooks in your application properly.
+
+That's the only change needed when upgrading your application to Dancer2 with
+this plugin.
 
 =head1 FUNCTIONS
 
