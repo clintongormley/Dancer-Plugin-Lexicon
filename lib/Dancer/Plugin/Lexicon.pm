@@ -2,10 +2,10 @@ package Dancer::Plugin::Lexicon;
 
 use strict;
 use warnings;
+use Dancer::Plugin;
 
 use Package::Stash();
 use Dancer ':syntax';
-use Dancer::Plugin;
 use File::Spec::Functions qw(rel2abs);
 
 use I18N::LangTags qw(implicate_supers panic_languages);
@@ -26,61 +26,73 @@ for my $k ( keys %Exports ) {
     register( $k => sub { $Exports{$k}->(@_) } );
 }
 
-_setup_i18n();
-
+    _setup_i18n();
 #===================================
 no warnings 'redefine';
 sub import {
 #===================================
+    # This import is only needed for Dancer 1
+    return if int(dancer_version) > 1;
+
     _setup_i18n();
+
     __PACKAGE__->export_to_level( 1, @_ );
 }
 
-register install_hooks => sub {
-    my $dsl = shift;
 
-    $dsl->hook(
-        before => sub {
-            my $settings = _setup_i18n();
-            my $session_name = $settings->{session_name} || 'lang';
+sub _before_hook {
+    my $settings = _setup_i18n();
+    my $session_name = $settings->{session_name} || 'lang';
 
-            my $lang = param( $settings->{param_name} || "lang" )
-              || eval { session $session_name};
+    my $lang = param( $settings->{param_name} || "lang" )
+      || eval { session $session_name};
 
-            my @langs;
-            if ($lang) {
-                @langs = $lang;
-            }
-            elsif ( $settings->{auto_detect} ) {
-                @langs = I18N::LangTags::Detect::http_accept_langs(
-                    request->accept_language );
-                @langs = implicate_supers(@langs);
-                push @langs, panic_languages(@langs);
-            }
+    my @langs;
+    if ($lang) {
+        @langs = $lang;
+    }
+    elsif ( $settings->{auto_detect} ) {
+        @langs =
+          I18N::LangTags::Detect::http_accept_langs( request->accept_language );
+        @langs = implicate_supers(@langs);
+        push @langs, panic_languages(@langs);
+    }
 
-            $lang = _set_language(@langs)->language_tag;
+    $lang = _set_language(@langs)->language_tag;
 
-            eval { session $session_name => $lang };
-        }
-    );
+    eval { session $session_name => $lang };
+}
 
-    $dsl->hook(
-        before_template_render => sub {
-            my $tokens  = shift;
+sub _before_template_render_hook {
+    my $tokens = shift;
 
-            # get the name of the localize methods in settings
-            my $funcs = plugin_setting->{'func'} || ['loc'];
-            $funcs = [$funcs] unless ref $funcs eq 'ARRAY';
+    # get the name of the localize methods in settings
+    my $funcs = plugin_setting->{'func'} || ['loc'];
+    $funcs = [$funcs] unless ref $funcs eq 'ARRAY';
 
-            # add them in the tokens
-            $tokens->{$_} = sub { 
-                _get_handle()->maketext(@_); 
-            } for @{ $funcs };
+    # add them in the tokens
+    $tokens->{$_} = sub { _get_handle()->maketext(@_) } for @{$funcs};
 
-            return $tokens;
-        }
-    );
-};
+    return $tokens;
+}
+
+if ( int(dancer_version) == 1 ) {
+    hook before          => sub { _before_hook(@_) };
+    hook before_template => sub { _before_template_render_hook(@_) };
+}
+else {
+    register dp_lexicon_install_hooks => sub {
+        my $dsl = shift;
+
+        $dsl->hook( 
+            before => \&_before_hook
+        );
+
+        $dsl->hook(
+            before_template_render => \&_before_template_render_hook
+        );
+      };
+}
 
 #===================================
 sub _get_handle       { var $Handle or _set_language() }
@@ -121,7 +133,7 @@ sub _external_set_language {
 sub _setup_i18n {
 #===================================
     my $appdir = setting('appdir') or return;
-
+    
     my $settings = plugin_setting();
     return $settings if $settings->{_loaded};
 
@@ -159,7 +171,7 @@ sub _setup_i18n {
     closedir $dir;
 
     if (%not_loaded) {
-        die "Couldn't find the .po or .mo for: "
+        die "Couldn't find the .po or .mo in $path for: "
             . join( ', ', sort keys %not_loaded );
     }
 

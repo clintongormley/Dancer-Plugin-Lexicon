@@ -16,6 +16,10 @@ BEGIN {
 
 use Dancer::Plugin::Lexicon;
 
+if (int(dancer_version) == 2) {
+    dp_lexicon_install_hooks();
+}
+
 get '/in_route' => sub {
     l('hello'); 
 };

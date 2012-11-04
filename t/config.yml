@@ -3,11 +3,9 @@ plugins:
     namespace:      MyApp::Lexicon
     path:           languages
     auto_detect:    1
-    default:        en
+    default:        fr
     func:           [l, _]
     session_name:   lang
     param_name:     lang
     langs:
-      en:       "English"
-      en-us:    "US English"
       fr:       "Français"
