@@ -51,7 +51,7 @@ add_hook before => sub {
         @langs = $lang;
     }
     elsif ( $settings->{auto_detect} ) {
-        @langs = I18N::LangTags::Detect::http_accept_langs(
+        @langs = I18N::LangTags::Detect->http_accept_langs(
             request->accept_language );
         @langs = implicate_supers(@langs);
         push @langs, panic_languages(@langs);
