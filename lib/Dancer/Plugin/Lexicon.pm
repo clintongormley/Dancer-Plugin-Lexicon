@@ -39,11 +39,12 @@ sub import {
 #===================================
 add_hook before => sub {
 #===================================
-    my $settings = _setup_i18n();
-    my $session_name = $settings->{session_name} || 'lang';
+    my $settings         = _setup_i18n();
+    my $sessions_enabled = !!engine('session');
+    my $session_name     = $settings->{session_name} || 'lang';
 
     my $lang = param( $settings->{param_name} || "lang" )
-        || eval { session $session_name};
+        || $sessions_enabled && session $session_name;
 
     my @langs;
     if ($lang) {
@@ -58,7 +59,8 @@ add_hook before => sub {
 
     $lang = _set_language(@langs)->language_tag;
 
-    eval { session $session_name => $lang };
+    session $session_name => $lang
+        if $sessions_enabled;
 };
 
 #===================================
