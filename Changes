@@ -1,3 +1,7 @@
+0.06    2014-08-03
+        http_accept_langs should be called as a method, not a function
+        eval'ed error was being propagated when sessions disabled
+
 0.05    2012-08-06
         Renamed Changes.txt to Changes - it wasn't being included by dzil
 
